@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produção Ambulatorial — Policlínicas e Centros Cariocas (SMS-RJ)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<style>
+:root {
+    --bg-primary: #f4f6f8;
+    --bg-card: #ffffff;
+    --bg-header: #0f2c4c;
+    --bg-header-2: #163f6b;
+    --text-primary: #1c2733;
+    --text-secondary: #64748b;
+    --text-on-dark: #ffffff;
+    --color-1: #2f6fed;
+    --color-2: #f59e0b;
+    --color-3: #10b981;
+    --color-4: #ef4444;
+    --color-5: #8b5cf6;
+    --color-6: #06b6d4;
+    --color-7: #ec4899;
+    --color-8: #84cc16;
+    --positive: #10b981;
+    --negative: #ef4444;
+    --border: #e5e9ef;
+    --gap: 16px;
+    --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+.dashboard-container { max-width: 1440px; margin: 0 auto; padding: var(--gap); }
+.dashboard-header {
+    background: linear-gradient(120deg, var(--bg-header), var(--bg-header-2));
+    color: var(--text-on-dark);
+    padding: 22px 26px;
+    border-radius: var(--radius);
+    margin-bottom: var(--gap);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.dashboard-header .title-block h1 { font-size: 20px; font-weight: 700; }
+.dashboard-header .title-block p { font-size: 13px; color: rgba(255,255,255,.75); margin-top: 4px; }
+.filters { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 11px; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: .4px; }
+.filter-group select {
+    padding: 7px 10px; border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
+    background: rgba(255,255,255,.12); color: var(--text-on-dark); font-size: 13px; min-width: 190px;
+}
+.filter-group select option { background: var(--bg-header); color: var(--text-on-dark); }
+
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--gap); margin-bottom: var(--gap); }
+.kpi-card { background: var(--bg-card); border-radius: var(--radius); padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--border); }
+.kpi-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+.kpi-value { font-size: 26px; font-weight: 700; }
+.kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+.chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: var(--gap); margin-bottom: var(--gap); }
+.chart-row.secondary { grid-template-columns: 1fr 1fr; }
+.chart-container { background: var(--bg-card); border-radius: var(--radius); padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--border); display:flex; flex-direction:column; }
+.chart-container h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.chart-container .chart-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+.chart-container canvas { max-height: 320px; flex: 1; }
+.chart-container.tall canvas { max-height: 420px; }
+
+.table-section { background: var(--bg-card); border-radius: var(--radius); padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--border); overflow-x: auto; margin-bottom: var(--gap); }
+.table-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table thead th { text-align: left; padding: 9px 10px; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; cursor: pointer; user-select: none; }
+.data-table thead th:hover { color: var(--text-primary); background: #f8fafc; }
+.data-table tbody td { padding: 8px 10px; border-bottom: 1px solid #f1f3f5; white-space: nowrap; }
+.data-table tbody tr:hover { background: #f8fafc; }
+.badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; }
+.badge.good { background:#dcfce7; color:#15803d; }
+.badge.mid { background:#fef3c7; color:#b45309; }
+.badge.low { background:#fee2e2; color:#b91c1c; }
+
+.dashboard-footer { text-align: center; font-size: 12px; color: var(--text-secondary); padding: 18px 0 8px; }
+
+@media (max-width: 980px) {
+    .chart-row, .chart-row.secondary { grid-template-columns: 1fr; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media print {
+    body { background: white; }
+    .filters { display: none; }
+    .chart-container { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="dashboard-container">
+
+    <header class="dashboard-header">
+        <div class="title-block">
+            <h1>Produção Ambulatorial — Policlínicas e Centros Cariocas</h1>
+            <p>SIA/SUS · Secretaria Municipal de Saúde do Rio de Janeiro · Fonte: TabNet RJ</p>
+        </div>
+        <div class="filters">
+            <div class="filter-group">
+                <label for="filter-estab">Unidade</label>
+                <select id="filter-estab" onchange="dashboard.applyFilters()">
+                    <option value="all">Todas as unidades</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <section class="kpi-row" id="kpi-row">
+        <div class="kpi-card">
+            <div class="kpi-label">Qtd. Apresentada (total)</div>
+            <div class="kpi-value" id="kpi-apresentada">–</div>
+            <div class="kpi-sub" id="kpi-periodo">–</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Qtd. Aprovada (total)</div>
+            <div class="kpi-value" id="kpi-aprovada">–</div>
+            <div class="kpi-sub" id="kpi-taxa">–</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Unidades monitoradas</div>
+            <div class="kpi-value" id="kpi-unidades">–</div>
+            <div class="kpi-sub">Policlínicas e Centros Cariocas</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Melhor mês (apresentada)</div>
+            <div class="kpi-value" id="kpi-melhor-mes">–</div>
+            <div class="kpi-sub" id="kpi-melhor-mes-valor">–</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Unidade líder</div>
+            <div class="kpi-value" id="kpi-lider" style="font-size:16px;">–</div>
+            <div class="kpi-sub" id="kpi-lider-valor">–</div>
+        </div>
+    </section>
+
+    <section class="chart-row">
+        <div class="chart-container tall">
+            <h3>Evolução mensal — Apresentada vs. Aprovada</h3>
+            <div class="chart-sub" id="linha-sub">Total da rede (todas as unidades selecionadas)</div>
+            <canvas id="chart-linha"></canvas>
+        </div>
+        <div class="chart-container tall">
+            <h3>Ranking por unidade</h3>
+            <div class="chart-sub">Qtd. apresentada no período</div>
+            <canvas id="chart-ranking"></canvas>
+        </div>
+    </section>
+
+    <section class="chart-row secondary">
+        <div class="chart-container">
+            <h3>Taxa de aprovação por unidade</h3>
+            <div class="chart-sub">Aprovada ÷ Apresentada, período completo</div>
+            <canvas id="chart-taxa"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3 id="cbo-title">Produção por Profissional-CBO</h3>
+            <div class="chart-sub" id="cbo-sub">Top categorias profissionais (apresentada)</div>
+            <canvas id="chart-cbo"></canvas>
+        </div>
+    </section>
+
+    <section class="table-section">
+        <h3>Detalhe mensal por unidade</h3>
+        <div id="tabela-mensal"></div>
+    </section>
+
+    <footer class="dashboard-footer">
+        Dados extraídos do TabNet Rio de Janeiro (SIA/SUS) — Produção Ambulatorial de Procedimentos.
+        Gerado em <span id="data-date"></span>.
+    </footer>
+</div>
+
+<script src="./data.json.js"></script>
+<script>
+const COLORS = ['#2f6fed','#f59e0b','#10b981','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#0ea5e9','#a855f7','#14b8a6','#eab308'];
+
+function fmtInt(v) {
+    if (v === null || v === undefined) return '–';
+    return Math.round(v).toLocaleString('pt-BR');
+}
+function fmtPct(v) { return (v === null || v === undefined) ? '–' : v.toFixed(1).replace('.', ',') + '%'; }
+
+class Dashboard {
+    constructor(data) {
+        this.data = data;
+        this.charts = {};
+        this.sortState = { field: 'mes', dir: 'asc' };
+        this.init();
+    }
+
+    init() {
+        this.populateEstabFilter();
+        this.renderKPIs();
+        this.renderCharts();
+        this.renderTable();
+        document.getElementById('data-date').textContent = new Date().toLocaleDateString('pt-BR');
+    }
+
+    populateEstabFilter() {
+        const sel = document.getElementById('filter-estab');
+        this.data.estabelecimentos.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e;
+            opt.textContent = this.data.estabelecimentos_abrev[e] || e;
+            sel.appendChild(opt);
+        });
+    }
+
+    getEstab() {
+        const v = document.getElementById('filter-estab').value;
+        return v === 'all' ? null : v;
+    }
+
+    applyFilters() {
+        this.renderKPIs();
+        this.updateCharts();
+        this.renderTable();
+    }
+
+    filteredMensal() {
+        const estab = this.getEstab();
+        return estab ? this.data.mensal.filter(r => r.estabelecimento === estab) : this.data.mensal;
+    }
+
+    renderKPIs() {
+        const estab = this.getEstab();
+        const rows = this.filteredMensal();
+        const totalApresentada = rows.reduce((s, r) => s + r.apresentada, 0);
+        const totalAprovada = rows.reduce((s, r) => s + r.aprovada, 0);
+        const taxa = totalApresentada ? (100 * totalAprovada / totalApresentada) : 0;
+
+        document.getElementById('kpi-apresentada').textContent = fmtInt(totalApresentada);
+        document.getElementById('kpi-aprovada').textContent = fmtInt(totalAprovada);
+        document.getElementById('kpi-taxa').textContent = 'Taxa de aprovação: ' + fmtPct(taxa);
+        document.getElementById('kpi-periodo').textContent = this.data.kpis.periodo_inicio + ' – ' + this.data.kpis.periodo_fim;
+        document.getElementById('kpi-unidades').textContent = estab ? '1 (filtrada)' : this.data.kpis.n_estabelecimentos;
+
+        let melhor = null;
+        rows.forEach(r => { if (!melhor || r.apresentada > melhor.apresentada) melhor = r; });
+        document.getElementById('kpi-melhor-mes').textContent = melhor ? melhor.mes : '–';
+        document.getElementById('kpi-melhor-mes-valor').textContent = melhor ? fmtInt(melhor.apresentada) + ' atendimentos' : '–';
+
+        const totais = estab
+            ? this.data.totais_estabelecimento.filter(t => t.estabelecimento === estab)
+            : this.data.totais_estabelecimento;
+        const lider = totais.slice().sort((a, b) => b.apresentada - a.apresentada)[0];
+        document.getElementById('kpi-lider').textContent = lider ? (this.data.estabelecimentos_abrev[lider.estabelecimento] || lider.estabelecimento) : '–';
+        document.getElementById('kpi-lider-valor').textContent = lider ? fmtInt(lider.apresentada) + ' no período' : '–';
+    }
+
+    seriesRede() {
+        const estab = this.getEstab();
+        if (!estab) {
+            return {
+                labels: this.data.total_mes_rede.map(r => r.mes),
+                apresentada: this.data.total_mes_rede.map(r => r.apresentada),
+                aprovada: this.data.total_mes_rede.map(r => r.aprovada),
+            };
+        }
+        const rows = this.data.mensal.filter(r => r.estabelecimento === estab);
+        return {
+            labels: rows.map(r => r.mes),
+            apresentada: rows.map(r => r.apresentada),
+            aprovada: rows.map(r => r.aprovada),
+        };
+    }
+
+    renderCharts() {
+        const s = this.seriesRede();
+        this.charts.linha = new Chart(document.getElementById('chart-linha').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: s.labels,
+                datasets: [
+                    { label: 'Apresentada', data: s.apresentada, borderColor: COLORS[0], backgroundColor: COLORS[0] + '22', borderWidth: 2, tension: .3, fill: true, pointRadius: 2 },
+                    { label: 'Aprovada', data: s.aprovada, borderColor: COLORS[2], backgroundColor: COLORS[2] + '22', borderWidth: 2, tension: .3, fill: true, pointRadius: 2 },
+                ],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+                scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmtInt(v) } } },
+            },
+        });
+
+        const totais = this.data.totais_estabelecimento.slice().sort((a, b) => b.apresentada - a.apresentada);
+        this.charts.ranking = new Chart(document.getElementById('chart-ranking').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: totais.map(t => this.data.estabelecimentos_abrev[t.estabelecimento] || t.estabelecimento),
+                datasets: [{ label: 'Apresentada', data: totais.map(t => t.apresentada), backgroundColor: COLORS[0] + 'CC', borderRadius: 4 }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { callback: v => fmtInt(v) } } },
+            },
+        });
+
+        const taxaOrdenada = this.data.totais_estabelecimento.slice().sort((a, b) => b.taxa_aprovacao - a.taxa_aprovacao);
+        this.charts.taxa = new Chart(document.getElementById('chart-taxa').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: taxaOrdenada.map(t => this.data.estabelecimentos_abrev[t.estabelecimento] || t.estabelecimento),
+                datasets: [{ label: 'Taxa de aprovação (%)', data: taxaOrdenada.map(t => t.taxa_aprovacao), backgroundColor: taxaOrdenada.map(t => t.taxa_aprovacao >= 90 ? COLORS[2] : t.taxa_aprovacao >= 70 ? COLORS[1] : COLORS[3]), borderRadius: 4 }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmtPct(c.parsed.x) } } },
+                scales: { x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+            },
+        });
+
+        this.renderCboChart();
+    }
+
+    renderCboChart() {
+        const estab = this.getEstab();
+        const items = estab ? (this.data.cbo_por_estabelecimento[estab] || []) : this.data.cbo_rede;
+        document.getElementById('cbo-title').textContent = estab ? 'Produção por Profissional-CBO — ' + (this.data.estabelecimentos_abrev[estab] || estab) : 'Produção por Profissional-CBO — Rede';
+        if (this.charts.cbo) this.charts.cbo.destroy();
+        this.charts.cbo = new Chart(document.getElementById('chart-cbo').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: items.map(i => i.cbo),
+                datasets: [{ data: items.map(i => i.valor), backgroundColor: COLORS.map(c => c + 'CC'), borderColor: '#fff', borderWidth: 2 }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '58%',
+                plugins: {
+                    legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
+                    tooltip: { callbacks: { label: c => { const total = c.dataset.data.reduce((a, b) => a + b, 0); return c.label + ': ' + fmtInt(c.parsed) + ' (' + fmtPct(100 * c.parsed / total) + ')'; } } },
+                },
+            },
+        });
+    }
+
+    updateCharts() {
+        const s = this.seriesRede();
+        const l = this.charts.linha;
+        l.data.labels = s.labels;
+        l.data.datasets[0].data = s.apresentada;
+        l.data.datasets[1].data = s.aprovada;
+        document.getElementById('linha-sub').textContent = this.getEstab() ? (this.data.estabelecimentos_abrev[this.getEstab()] || this.getEstab()) : 'Total da rede (todas as unidades)';
+        l.update('none');
+        this.renderCboChart();
+    }
+
+    renderTable() {
+        const container = document.getElementById('tabela-mensal');
+        const rows = this.filteredMensal();
+        const columns = [
+            { field: 'estabelecimento', label: 'Unidade', map: v => this.data.estabelecimentos_abrev[v] || v },
+            { field: 'mes', label: 'Mês' },
+            { field: 'apresentada', label: 'Apresentada', fmt: fmtInt },
+            { field: 'aprovada', label: 'Aprovada', fmt: fmtInt },
+            { field: 'taxa_aprovacao', label: 'Taxa Aprov.', fmt: fmtPct, badge: true },
+        ];
+
+        const render = (data) => {
+            let html = '<table class="data-table"><thead><tr>';
+            columns.forEach(col => {
+                const arrow = this.sortState.field === col.field ? (this.sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+                html += `<th data-field="${col.field}">${col.label}${arrow}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            data.slice(0, 300).forEach(row => {
+                html += '<tr>';
+                columns.forEach(col => {
+                    let raw = row[col.field];
+                    let val = col.map ? col.map(raw) : (col.fmt ? col.fmt(raw) : raw);
+                    if (col.badge) {
+                        const cls = raw >= 90 ? 'good' : raw >= 70 ? 'mid' : 'low';
+                        val = `<span class="badge ${cls}">${val}</span>`;
+                    }
+                    html += `<td>${val}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            container.querySelectorAll('th').forEach(th => {
+                th.addEventListener('click', () => {
+                    const field = th.dataset.field;
+                    if (this.sortState.field === field) this.sortState.dir = this.sortState.dir === 'asc' ? 'desc' : 'asc';
+                    else { this.sortState.field = field; this.sortState.dir = 'asc'; }
+                    this.renderTable();
+                });
+            });
+        };
+
+        const sorted = rows.slice().sort((a, b) => {
+            const f = this.sortState.field;
+            let av = a[f], bv = b[f];
+            if (f === 'mes') { av = a.__ord || 0; bv = b.__ord || 0; }
+            const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+            return this.sortState.dir === 'asc' ? cmp : -cmp;
+        });
+        render(sorted);
+    }
+}
+
+const dashboard = new Dashboard(TABNET_DATA);
+</script>
+</body>
+</html>
