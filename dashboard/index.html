@@ -109,6 +109,9 @@ body {
     flex-wrap: wrap;
     gap: 16px;
 }
+.header-brand { display: flex; align-items: center; gap: 18px; }
+.header-logo { height: 52px; width: auto; background: #fff; border-radius: 8px; padding: 6px 10px; flex-shrink: 0; }
+.dashboard-header .title-owner { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #7fb8ff; margin-bottom: 3px; }
 .dashboard-header .title-block h1 { font-size: 21px; font-weight: 700; letter-spacing: -.2px; }
 .dashboard-header .title-block p { font-size: 13px; color: rgba(255,255,255,.75); margin-top: 4px; }
 .controls { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
@@ -195,9 +198,13 @@ body {
 <div class="dashboard-container">
 
     <header class="dashboard-header">
-        <div class="title-block">
-            <h1>Produção Ambulatorial — Policlínicas e Centros Cariocas</h1>
-            <p>SIA/SUS · Secretaria Municipal de Saúde do Rio de Janeiro · Fonte: TabNet RJ</p>
+        <div class="header-brand">
+            <img class="header-logo" src="./logo_sms.png" alt="Prefeitura do Rio · Saúde · SUS" onerror="this.style.display='none'">
+            <div class="title-block">
+                <div class="title-owner">Coordenação de Policlínicas — CPOL</div>
+                <h1>Produção Ambulatorial — Policlínicas e Centros Cariocas</h1>
+                <p>SIA/SUS · Secretaria Municipal de Saúde do Rio de Janeiro · Fonte: TabNet RJ</p>
+            </div>
         </div>
         <div class="controls">
             <div class="filter-group">
