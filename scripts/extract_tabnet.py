@@ -52,7 +52,9 @@ def gerar_arquivos(ano_ini, mes_ini, ano_fim, mes_fim):
             y += 1
     return files
 
-TODOS_ARQUIVOS = gerar_arquivos(2023, 1, 2026, 7)
+TODOS_ARQUIVOS = gerar_arquivos(2026, 1, 2026, 7)
+# Historico completo (usar quando for adicionar 2023-2025):
+# TODOS_ARQUIVOS = gerar_arquivos(2023, 1, 2026, 7)
 
 CONTEUDOS = {
     "apresentada": "Qtd.Apresentada",
