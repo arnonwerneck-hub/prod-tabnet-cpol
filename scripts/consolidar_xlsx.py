@@ -17,7 +17,8 @@ from openpyxl.utils import get_column_letter
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 IN_CSV = os.path.join(DATA_DIR, "tabnet_raw_long.csv")
-OUT_XLSX = os.path.join(BASE_DIR, "Producao_Policlinicas_RJ_2023_em_diante.xlsx")
+OUT_XLSX = os.path.join(BASE_DIR, "Producao_Policlinicas_RJ_2026.xlsx")
+OUT_CSV_RESUMO = os.path.join(DATA_DIR, "producao_policlinicas_2026_resumo_mensal.csv")
 
 MES_ORDEM = {m: i for i, m in enumerate(["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"])}
 
@@ -32,7 +33,7 @@ def mes_chave(label):
 
 def carregar_dados():
     df = pd.read_csv(IN_CSV, encoding="utf-8")
-    df = df[df["mes_atendimento"].apply(lambda x: mes_chave(x)[0] >= 2023)].copy()
+    df = df[df["mes_atendimento"].apply(lambda x: mes_chave(x)[0] >= 2026)].copy()
     return df
 
 
@@ -96,12 +97,13 @@ def formatar_planilha(ws, df, freeze_cols=2):
 def main():
     df = carregar_dados()
     if df.empty:
-        print("Nenhum dado encontrado (2023+) em", IN_CSV, file=sys.stderr)
+        print("Nenhum dado encontrado (2026+) em", IN_CSV, file=sys.stderr)
         sys.exit(1)
 
     pv_apresentada = montar_pivot(df, "apresentada")
     pv_aprovada = montar_pivot(df, "aprovada")
     resumo = montar_resumo_mensal(df)
+    resumo.to_csv(OUT_CSV_RESUMO, index=False, encoding="utf-8")
 
     with pd.ExcelWriter(OUT_XLSX, engine="openpyxl") as writer:
         resumo.to_excel(writer, sheet_name="Resumo Mensal", index=False)
@@ -115,6 +117,7 @@ def main():
         formatar_planilha(writer.sheets["Dados Brutos"], df, freeze_cols=2)
 
     print("Arquivo salvo em:", OUT_XLSX)
+    print("CSV resumo salvo em:", OUT_CSV_RESUMO)
     print("Linhas resumo:", len(resumo), "| Apresentada:", len(pv_apresentada), "| Aprovada:", len(pv_aprovada), "| Brutos:", len(df))
 
 

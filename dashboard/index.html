@@ -5,40 +5,101 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Produção Ambulatorial — Policlínicas e Centros Cariocas (SMS-RJ)</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 <style>
 :root {
-    --bg-primary: #f4f6f8;
-    --bg-card: #ffffff;
-    --bg-header: #0f2c4c;
-    --bg-header-2: #163f6b;
-    --text-primary: #1c2733;
-    --text-secondary: #64748b;
-    --text-on-dark: #ffffff;
-    --color-1: #2f6fed;
-    --color-2: #f59e0b;
-    --color-3: #10b981;
-    --color-4: #ef4444;
-    --color-5: #8b5cf6;
-    --color-6: #06b6d4;
-    --color-7: #ec4899;
-    --color-8: #84cc16;
-    --positive: #10b981;
-    --negative: #ef4444;
-    --border: #e5e9ef;
+    color-scheme: light;
+    --surface: #fcfcfb;
+    --page: #f9f9f7;
+    --card-border: #e5e4de;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --series-1: #2a78d6;   /* Apresentada */
+    --series-1-wash: rgba(42, 120, 214, .10);
+    --series-2: #eb6834;   /* Glosa (apresentada > aprovada) */
+    --series-3: #1baf7a;   /* Aprovada */
+    --series-3-wash: rgba(27, 175, 122, .10);
+    --excellent: #0a7d55;
+    --good: #0ca30c;
+    --warning: #c98500;
+    --critical: #d03b3b;
+    --excellent-bg: #dcf3ea;
+    --good-bg: #e3f6e3;
+    --warning-bg: #fdf1da;
+    --critical-bg: #fbe6e6;
+    --header-1: #0f2c4c;
+    --header-2: #163f6b;
+    --border-ring: rgba(11,11,11,0.10);
+    --radius: 14px;
     --gap: 16px;
-    --radius: 10px;
+    --shadow: 0 1px 2px rgba(11,11,11,.04), 0 1px 8px rgba(11,11,11,.04);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --surface: #1a1a19;
+        --page: #0d0d0d;
+        --card-border: #2c2c2a;
+        --ink: #ffffff;
+        --ink-2: #c3c2b7;
+        --muted: #948f88;
+        --grid: #2c2c2a;
+        --axis: #383835;
+        --series-1: #3987e5;
+        --series-1-wash: rgba(57, 135, 229, .14);
+        --series-2: #d95926;
+        --series-3: #24c98a;
+        --series-3-wash: rgba(36, 201, 138, .14);
+        --excellent: #1fd08a;
+        --good: #29c229;
+        --warning: #fab219;
+        --critical: #e66767;
+        --excellent-bg: rgba(31,208,138,.16);
+        --good-bg: rgba(41,194,41,.14);
+        --warning-bg: rgba(250,178,25,.14);
+        --critical-bg: rgba(230,103,103,.14);
+        --border-ring: rgba(255,255,255,0.12);
+        --shadow: 0 1px 2px rgba(0,0,0,.3), 0 1px 10px rgba(0,0,0,.25);
+    }
+}
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --page: #0d0d0d;
+    --card-border: #2c2c2a;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #948f88;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --series-1: #3987e5;
+    --series-1-wash: rgba(57, 135, 229, .14);
+    --series-3: #24c98a;
+    --series-3-wash: rgba(36, 201, 138, .14);
+    --good: #29c229;
+    --warning: #fab219;
+    --critical: #e66767;
+    --good-bg: rgba(41,194,41,.14);
+    --warning-bg: rgba(250,178,25,.14);
+    --critical-bg: rgba(230,103,103,.14);
+    --border-ring: rgba(255,255,255,0.12);
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 1px 10px rgba(0,0,0,.25);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--page);
+    color: var(--ink);
     line-height: 1.5;
 }
-.dashboard-container { max-width: 1440px; margin: 0 auto; padding: var(--gap); }
+.dashboard-container { max-width: 1480px; margin: 0 auto; padding: var(--gap); }
+
 .dashboard-header {
-    background: linear-gradient(120deg, var(--bg-header), var(--bg-header-2));
-    color: var(--text-on-dark);
+    background: linear-gradient(120deg, var(--header-1), var(--header-2));
+    color: #fff;
     padding: 22px 26px;
     border-radius: var(--radius);
     margin-bottom: var(--gap);
@@ -48,52 +109,84 @@ body {
     flex-wrap: wrap;
     gap: 16px;
 }
-.dashboard-header .title-block h1 { font-size: 20px; font-weight: 700; }
+.dashboard-header .title-block h1 { font-size: 21px; font-weight: 700; letter-spacing: -.2px; }
 .dashboard-header .title-block p { font-size: 13px; color: rgba(255,255,255,.75); margin-top: 4px; }
-.filters { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.controls { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .filter-group { display: flex; flex-direction: column; gap: 4px; }
 .filter-group label { font-size: 11px; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: .4px; }
 .filter-group select {
-    padding: 7px 10px; border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
-    background: rgba(255,255,255,.12); color: var(--text-on-dark); font-size: 13px; min-width: 190px;
+    padding: 7px 10px; border: 1px solid rgba(255,255,255,.25); border-radius: 8px;
+    background: rgba(255,255,255,.12); color: #fff; font-size: 13px; min-width: 220px;
 }
-.filter-group select option { background: var(--bg-header); color: var(--text-on-dark); }
+.filter-group select option { background: var(--header-1); color: #fff; }
+.theme-toggle {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.12); color: #fff; font-size: 13px; cursor: pointer;
+    height: 34px; align-self: flex-end;
+}
+.theme-toggle:hover { background: rgba(255,255,255,.2); }
 
 .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--gap); margin-bottom: var(--gap); }
-.kpi-card { background: var(--bg-card); border-radius: var(--radius); padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--border); }
-.kpi-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
-.kpi-value { font-size: 26px; font-weight: 700; }
-.kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.kpi-card { background: var(--surface); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border: 1px solid var(--card-border); position: relative; overflow: hidden; }
+.kpi-label { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; font-weight: 600; }
+.kpi-value { font-size: 25px; font-weight: 700; letter-spacing: -.3px; font-variant-numeric: proportional-nums; }
+.kpi-sub { font-size: 12px; color: var(--ink-2); margin-top: 5px; }
+.kpi-delta { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; margin-top: 6px; padding: 2px 7px; border-radius: 999px; }
+.kpi-delta.up { color: var(--good); background: var(--good-bg); }
+.kpi-delta.down { color: var(--critical); background: var(--critical-bg); }
+.kpi-spark { position: absolute; right: 0; bottom: 0; opacity: .9; }
+.kpi-meter-track { height: 8px; border-radius: 999px; background: var(--grid); margin-top: 10px; overflow: hidden; }
+.kpi-meter-fill { height: 100%; border-radius: 999px; }
 
 .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: var(--gap); margin-bottom: var(--gap); }
 .chart-row.secondary { grid-template-columns: 1fr 1fr; }
-.chart-container { background: var(--bg-card); border-radius: var(--radius); padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--border); display:flex; flex-direction:column; }
-.chart-container h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-.chart-container .chart-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+.chart-row.tertiary { grid-template-columns: 1.3fr 1fr; }
+.chart-container { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); border: 1px solid var(--card-border); display:flex; flex-direction:column; }
+.chart-container h3 { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.chart-container .chart-sub { font-size: 12px; color: var(--ink-2); margin-bottom: 14px; }
 .chart-container canvas { max-height: 320px; flex: 1; }
 .chart-container.tall canvas { max-height: 420px; }
+.legend-row { display:flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-2); margin-bottom: 10px; }
+.legend-row .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right: 5px; }
 
-.table-section { background: var(--bg-card); border-radius: var(--radius); padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--border); overflow-x: auto; margin-bottom: var(--gap); }
-.table-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.heatmap-wrap { overflow-x: auto; }
+.heatmap-grid { display: grid; gap: 3px; min-width: 640px; }
+.heatmap-row-label { font-size: 11.5px; color: var(--ink-2); display:flex; align-items:center; padding-right: 8px; white-space: nowrap; }
+.heatmap-col-label { font-size: 10.5px; color: var(--muted); text-align:center; padding-bottom: 4px; }
+.heatmap-cell { border-radius: 4px; min-height: 26px; position: relative; cursor: default; display: flex; align-items: center; justify-content: center; }
+.heatmap-cell:hover { outline: 2px solid var(--ink); outline-offset: -2px; }
+.heatmap-value { font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; pointer-events: none; }
+.hm-tooltip {
+    position: fixed; pointer-events:none; background: var(--ink); color: var(--page);
+    font-size: 11.5px; padding: 6px 9px; border-radius: 8px; z-index: 50; opacity:0;
+    transition: opacity .08s; white-space: nowrap;
+}
+
+.table-section { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); border: 1px solid var(--card-border); overflow-x: auto; margin-bottom: var(--gap); }
+.table-section h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.data-table thead th { text-align: left; padding: 9px 10px; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; cursor: pointer; user-select: none; }
-.data-table thead th:hover { color: var(--text-primary); background: #f8fafc; }
-.data-table tbody td { padding: 8px 10px; border-bottom: 1px solid #f1f3f5; white-space: nowrap; }
-.data-table tbody tr:hover { background: #f8fafc; }
-.badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; }
-.badge.good { background:#dcfce7; color:#15803d; }
-.badge.mid { background:#fef3c7; color:#b45309; }
-.badge.low { background:#fee2e2; color:#b91c1c; }
+.data-table thead th { text-align: left; padding: 9px 10px; border-bottom: 2px solid var(--grid); color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; cursor: pointer; user-select: none; }
+.data-table thead th:hover { color: var(--ink); }
+.data-table tbody td { padding: 8px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.data-table tbody td:first-child { font-variant-numeric: proportional-nums; }
+.data-table tbody tr:hover { background: var(--page); }
+.badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:700; }
+.badge.good { background: var(--good-bg); color: var(--good); }
+.badge.mid { background: var(--warning-bg); color: var(--warning); }
+.badge.low { background: var(--critical-bg); color: var(--critical); }
 
-.dashboard-footer { text-align: center; font-size: 12px; color: var(--text-secondary); padding: 18px 0 8px; }
+.dashboard-footer { text-align: center; font-size: 12px; color: var(--muted); padding: 18px 0 8px; }
 
-@media (max-width: 980px) {
-    .chart-row, .chart-row.secondary { grid-template-columns: 1fr; }
+@media (max-width: 1080px) {
+    .chart-row, .chart-row.secondary, .chart-row.tertiary { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
     .kpi-row { grid-template-columns: repeat(2, 1fr); }
 }
 @media print {
     body { background: white; }
-    .filters { display: none; }
+    .controls { display: none; }
     .chart-container { break-inside: avoid; }
 }
 </style>
@@ -106,13 +199,27 @@ body {
             <h1>Produção Ambulatorial — Policlínicas e Centros Cariocas</h1>
             <p>SIA/SUS · Secretaria Municipal de Saúde do Rio de Janeiro · Fonte: TabNet RJ</p>
         </div>
-        <div class="filters">
+        <div class="controls">
             <div class="filter-group">
                 <label for="filter-estab">Unidade</label>
                 <select id="filter-estab" onchange="dashboard.applyFilters()">
                     <option value="all">Todas as unidades</option>
                 </select>
             </div>
+            <div class="filter-group">
+                <label for="filter-ano">Ano</label>
+                <select id="filter-ano" onchange="dashboard.onAnoChange()">
+                    <option value="all">Todos os anos</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-mes">Mês</label>
+                <select id="filter-mes" onchange="dashboard.applyFilters()">
+                    <option value="all">Todos os meses</option>
+                </select>
+            </div>
+            <button class="theme-toggle" id="refresh-btn" type="button">🔄 <span>Atualizar dados</span></button>
+            <button class="theme-toggle" id="theme-toggle" type="button">🌙 <span>Modo escuro</span></button>
         </div>
     </header>
 
@@ -120,12 +227,35 @@ body {
         <div class="kpi-card">
             <div class="kpi-label">Qtd. Apresentada (total)</div>
             <div class="kpi-value" id="kpi-apresentada">–</div>
-            <div class="kpi-sub" id="kpi-periodo">–</div>
+            <div class="kpi-delta" id="kpi-apresentada-delta"></div>
+            <canvas class="kpi-spark" id="spark-apresentada" width="90" height="32"></canvas>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Qtd. Aprovada (total)</div>
             <div class="kpi-value" id="kpi-aprovada">–</div>
-            <div class="kpi-sub" id="kpi-taxa">–</div>
+            <div class="kpi-delta" id="kpi-aprovada-delta"></div>
+            <canvas class="kpi-spark" id="spark-aprovada" width="90" height="32"></canvas>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Taxa de Aprovação</div>
+            <div class="kpi-value" id="kpi-taxa">–</div>
+            <div class="kpi-meter-track"><div class="kpi-meter-fill" id="kpi-taxa-fill"></div></div>
+            <div class="kpi-sub" id="kpi-taxa-sub">Aprovada ÷ Apresentada</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Produtividade média/mês</div>
+            <div class="kpi-value" id="kpi-media-mensal">–</div>
+            <div class="kpi-sub">Atendimentos apresentados por mês</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Melhor mês (menor glosa)</div>
+            <div class="kpi-value" id="kpi-melhor-mes">–</div>
+            <div class="kpi-sub" id="kpi-melhor-mes-valor">–</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Unidade líder (menor glosa)</div>
+            <div class="kpi-value" id="kpi-lider" style="font-size:15px; line-height:1.3;">–</div>
+            <div class="kpi-sub" id="kpi-lider-valor">–</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Unidades monitoradas</div>
@@ -133,40 +263,60 @@ body {
             <div class="kpi-sub">Policlínicas e Centros Cariocas</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Melhor mês (apresentada)</div>
-            <div class="kpi-value" id="kpi-melhor-mes">–</div>
-            <div class="kpi-sub" id="kpi-melhor-mes-valor">–</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Unidade líder</div>
-            <div class="kpi-value" id="kpi-lider" style="font-size:16px;">–</div>
-            <div class="kpi-sub" id="kpi-lider-valor">–</div>
+            <div class="kpi-label">Profissionais-CBO ativos</div>
+            <div class="kpi-value" id="kpi-cbos">–</div>
+            <div class="kpi-sub" id="kpi-periodo">–</div>
         </div>
     </section>
 
     <section class="chart-row">
         <div class="chart-container tall">
-            <h3>Evolução mensal — Apresentada vs. Aprovada</h3>
-            <div class="chart-sub" id="linha-sub">Total da rede (todas as unidades selecionadas)</div>
+            <h3>Diferença mensal — Apresentada vs. Aprovada</h3>
+            <div class="legend-row" id="linha-sub">
+                <span><span class="dot" style="background:var(--series-2)"></span>Glosa (apresentada &gt; aprovada)</span>
+                <span><span class="dot" style="background:var(--series-1)"></span>Aprovada superou a apresentada</span>
+                <span>· % sobre a barra = quanto falta para 100% de aprovação</span>
+            </div>
             <canvas id="chart-linha"></canvas>
         </div>
         <div class="chart-container tall">
-            <h3>Ranking por unidade</h3>
-            <div class="chart-sub">Qtd. apresentada no período</div>
+            <h3>Ranking por unidade — % de glosa</h3>
+            <div class="legend-row">
+                <span><span class="dot" style="background:var(--excellent)"></span>0% excelente</span>
+                <span><span class="dot" style="background:var(--good)"></span>&gt; 0–1% muito boa</span>
+                <span><span class="dot" style="background:var(--warning)"></span>&gt; 1–5% boa</span>
+                <span><span class="dot" style="background:var(--critical)"></span>&gt; 5% crítica</span>
+            </div>
             <canvas id="chart-ranking"></canvas>
         </div>
     </section>
 
     <section class="chart-row secondary">
         <div class="chart-container">
-            <h3>Taxa de aprovação por unidade</h3>
-            <div class="chart-sub">Aprovada ÷ Apresentada, período completo</div>
+            <h3>Ranking por unidade — Volume apresentado</h3>
+            <div class="chart-sub">Qtd. apresentada no período selecionado</div>
             <canvas id="chart-taxa"></canvas>
         </div>
         <div class="chart-container">
-            <h3 id="cbo-title">Produção por Profissional-CBO</h3>
-            <div class="chart-sub" id="cbo-sub">Top categorias profissionais (apresentada)</div>
-            <canvas id="chart-cbo"></canvas>
+            <h3 id="cbo-medicos-title">Top Profissional-CBO — Médicos</h3>
+            <div class="chart-sub" id="cbo-medicos-sub">Qtd. apresentada por especialidade médica</div>
+            <canvas id="chart-cbo-medicos"></canvas>
+        </div>
+    </section>
+
+    <section class="chart-row secondary" style="grid-template-columns: 1fr;">
+        <div class="chart-container">
+            <h3 id="cbo-nao-medicos-title">Top Profissional-CBO — Não-Médicos</h3>
+            <div class="chart-sub" id="cbo-nao-medicos-sub">Qtd. apresentada por categoria profissional</div>
+            <canvas id="chart-cbo-nao-medicos"></canvas>
+        </div>
+    </section>
+
+    <section class="chart-row" style="grid-template-columns: 1fr;">
+        <div class="chart-container">
+            <h3>Volume de Glosas — Unidades × Mês</h3>
+            <div class="chart-sub">Glosa (apresentada − aprovada); cor mais forte = maior volume de glosa no mês</div>
+            <div class="heatmap-wrap"><div id="heatmap"></div></div>
         </div>
     </section>
 
@@ -181,15 +331,42 @@ body {
     </footer>
 </div>
 
+<div class="hm-tooltip" id="hm-tooltip"></div>
+
 <script src="./data.json.js"></script>
 <script>
-const COLORS = ['#2f6fed','#f59e0b','#10b981','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#0ea5e9','#a855f7','#14b8a6','#eab308'];
-
+Chart.register(ChartDataLabels);
+function cssv(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function fmtInt(v) {
-    if (v === null || v === undefined) return '–';
+    if (v === null || v === undefined || isNaN(v)) return '–';
     return Math.round(v).toLocaleString('pt-BR');
 }
-function fmtPct(v) { return (v === null || v === undefined) ? '–' : v.toFixed(1).replace('.', ',') + '%'; }
+function fmtPct(v) { return (v === null || v === undefined || isNaN(v)) ? '–' : v.toFixed(1).replace('.', ',') + '%'; }
+function fmtPct2(v) { return (v === null || v === undefined || isNaN(v)) ? '–' : v.toFixed(2).replace('.', ',') + '%'; }
+function fmtSigned(v) { const s = v >= 0 ? '+' : ''; return s + v.toFixed(1).replace('.', ',') + '%'; }
+function statusColor(pct) { return pct >= 90 ? cssv('--good') : pct >= 70 ? cssv('--warning') : cssv('--critical'); }
+function glosaColor(pct) {
+    if (pct <= 0) return cssv('--excellent');
+    if (pct <= 1) return cssv('--good');
+    if (pct <= 5) return cssv('--warning');
+    return cssv('--critical');
+}
+function glosaLabel(pct) {
+    if (pct <= 0) return 'Excelente';
+    if (pct <= 1) return 'Muito boa';
+    if (pct <= 5) return 'Boa';
+    return 'Crítica';
+}
+function round1(v) { return Math.round(v * 10) / 10; }
+function round2(v) { return Math.round(v * 100) / 100; }
+
+const MES_ORDEM = { Jan: 0, Fev: 1, Mar: 2, Abr: 3, Mai: 4, Jun: 5, Jul: 6, Ago: 7, Set: 8, Out: 9, Nov: 10, Dez: 11 };
+function mesChave(label) {
+    const [mes, ano] = label.split('/');
+    return parseInt(ano, 10) * 12 + (MES_ORDEM[mes] ?? 99);
+}
+function mesAno(label) { return label.split('/')[1]; }
+function mesAbrev(label) { return label.split('/')[0]; }
 
 class Dashboard {
     constructor(data) {
@@ -201,20 +378,105 @@ class Dashboard {
 
     init() {
         this.populateEstabFilter();
+        this.populateAnoFilter();
+        this.populateMesFilter();
         this.renderKPIs();
         this.renderCharts();
+        this.renderHeatmap();
         this.renderTable();
         document.getElementById('data-date').textContent = new Date().toLocaleDateString('pt-BR');
     }
 
     populateEstabFilter() {
         const sel = document.getElementById('filter-estab');
+        const atual = sel.value;
+        sel.innerHTML = '<option value="all">Todas as unidades</option>';
         this.data.estabelecimentos.forEach(e => {
             const opt = document.createElement('option');
             opt.value = e;
             opt.textContent = this.data.estabelecimentos_abrev[e] || e;
             sel.appendChild(opt);
         });
+        if ([...sel.options].some(o => o.value === atual)) sel.value = atual;
+    }
+
+    populateAnoFilter() {
+        const sel = document.getElementById('filter-ano');
+        const atual = sel.value;
+        sel.innerHTML = '<option value="all">Todos os anos</option>';
+        const anos = [...new Set(this.data.meses.map(mesAno))].sort();
+        anos.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a;
+            opt.textContent = a;
+            sel.appendChild(opt);
+        });
+        if ([...sel.options].some(o => o.value === atual)) sel.value = atual;
+        else if (anos.length === 1) sel.value = anos[0];
+    }
+
+    populateMesFilter() {
+        const sel = document.getElementById('filter-mes');
+        const atual = sel.value;
+        const ano = this.getAno();
+        sel.innerHTML = '<option value="all">Todos os meses</option>';
+        const meses = this.data.meses.filter(m => !ano || mesAno(m) === ano).sort((a, b) => mesChave(a) - mesChave(b));
+        meses.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            sel.appendChild(opt);
+        });
+        if ([...sel.options].some(o => o.value === atual)) sel.value = atual;
+    }
+
+    onAnoChange() {
+        this.populateMesFilter();
+        this.applyFilters();
+    }
+
+    renderAll() {
+        this.renderKPIs();
+        this.destroyCharts();
+        this.renderCharts();
+        this.renderHeatmap();
+        this.renderTable();
+    }
+
+    async reload() {
+        const btn = document.getElementById('refresh-btn');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⏳ <span>Atualizando…</span>';
+        try {
+            const res = await fetch('./data.json.js?_=' + Date.now(), { cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const text = await res.text();
+            const m = text.match(/const\s+TABNET_DATA\s*=\s*(\{[\s\S]*\})\s*;?\s*$/);
+            if (!m) throw new Error('formato inesperado em data.json.js');
+            this.data = JSON.parse(m[1]);
+            this.populateEstabFilter();
+            this.populateAnoFilter();
+            this.populateMesFilter();
+            this.renderAll();
+            document.getElementById('data-date').textContent = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR');
+            btn.innerHTML = '✅ <span>Atualizado</span>';
+        } catch (e) {
+            console.error('Falha ao atualizar dados:', e);
+            btn.innerHTML = '⚠️ <span>Falha ao atualizar</span>';
+        } finally {
+            setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 2200);
+        }
+    }
+
+    getAno() {
+        const v = document.getElementById('filter-ano').value;
+        return v === 'all' ? null : v;
+    }
+
+    getMes() {
+        const v = document.getElementById('filter-mes').value;
+        return v === 'all' ? null : v;
     }
 
     getEstab() {
@@ -224,13 +486,63 @@ class Dashboard {
 
     applyFilters() {
         this.renderKPIs();
-        this.updateCharts();
+        this.destroyCharts();
+        this.renderCharts();
+        this.renderHeatmap();
         this.renderTable();
     }
 
-    filteredMensal() {
-        const estab = this.getEstab();
-        return estab ? this.data.mensal.filter(r => r.estabelecimento === estab) : this.data.mensal;
+    destroyCharts() { Object.values(this.charts).forEach(c => c && c.destroy()); this.charts = {}; }
+
+    filteredMensal(opts) {
+        const opciones = opts || {};
+        const estab = opciones.ignoreEstab ? null : this.getEstab();
+        const ano = this.getAno(), mes = this.getMes();
+        return this.data.mensal.filter(r =>
+            (!estab || r.estabelecimento === estab) &&
+            (!ano || mesAno(r.mes) === ano) &&
+            (!mes || r.mes === mes)
+        );
+    }
+
+    // Totais por unidade (para rankings), respeitando ano/mes mas nao a unidade
+    unitTotals() {
+        return this.aggregateByEstab(this.filteredMensal({ ignoreEstab: true }));
+    }
+
+    // Totais por unidade sobre TODO o periodo, ignorando todos os filtros (unidade/ano/mes)
+    unitTotalsFull() {
+        return this.aggregateByEstab(this.data.mensal);
+    }
+
+    aggregateByEstab(rows) {
+        const byEstab = {};
+        rows.forEach(r => {
+            if (!byEstab[r.estabelecimento]) byEstab[r.estabelecimento] = { estabelecimento: r.estabelecimento, apresentada: 0, aprovada: 0 };
+            byEstab[r.estabelecimento].apresentada += r.apresentada;
+            byEstab[r.estabelecimento].aprovada += r.aprovada;
+        });
+        return Object.values(byEstab).map(t => {
+            const taxa_aprovacao = t.apresentada ? round1(100 * t.aprovada / t.apresentada) : 0;
+            const glosa_pct = t.apresentada ? round2(Math.max(0, 100 * (t.apresentada - t.aprovada) / t.apresentada)) : 0;
+            return { ...t, taxa_aprovacao, glosa_pct };
+        });
+    }
+
+    seriesRede() {
+        const rows = this.filteredMensal().slice().sort((a, b) => mesChave(a.mes) - mesChave(b.mes));
+        const byMes = {};
+        rows.forEach(r => {
+            if (!byMes[r.mes]) byMes[r.mes] = { mes: r.mes, apresentada: 0, aprovada: 0 };
+            byMes[r.mes].apresentada += r.apresentada;
+            byMes[r.mes].aprovada += r.aprovada;
+        });
+        const meses = Object.keys(byMes).sort((a, b) => mesChave(a) - mesChave(b));
+        return {
+            labels: meses,
+            apresentada: meses.map(m => byMes[m].apresentada),
+            aprovada: meses.map(m => byMes[m].aprovada),
+        };
     }
 
     renderKPIs() {
@@ -239,123 +551,244 @@ class Dashboard {
         const totalApresentada = rows.reduce((s, r) => s + r.apresentada, 0);
         const totalAprovada = rows.reduce((s, r) => s + r.aprovada, 0);
         const taxa = totalApresentada ? (100 * totalAprovada / totalApresentada) : 0;
+        const mesesDistintos = [...new Set(rows.map(r => r.mes))];
+        const nMeses = mesesDistintos.length;
+        const ano = this.getAno(), mes = this.getMes();
 
         document.getElementById('kpi-apresentada').textContent = fmtInt(totalApresentada);
         document.getElementById('kpi-aprovada').textContent = fmtInt(totalAprovada);
-        document.getElementById('kpi-taxa').textContent = 'Taxa de aprovação: ' + fmtPct(taxa);
-        document.getElementById('kpi-periodo').textContent = this.data.kpis.periodo_inicio + ' – ' + this.data.kpis.periodo_fim;
+        document.getElementById('kpi-taxa').textContent = fmtPct(taxa);
+        document.getElementById('kpi-taxa-fill').style.width = Math.min(100, taxa) + '%';
+        document.getElementById('kpi-taxa-fill').style.background = statusColor(taxa);
+        document.getElementById('kpi-taxa-sub').textContent = 'Aprovada ÷ Apresentada · ' + fmtInt(totalAprovada) + ' de ' + fmtInt(totalApresentada);
+        document.getElementById('kpi-media-mensal').textContent = fmtInt(totalApresentada / (nMeses || 1));
+        document.getElementById('kpi-periodo').textContent = mes ? mes : (ano ? ano : (this.data.kpis.periodo_inicio + ' – ' + this.data.kpis.periodo_fim));
         document.getElementById('kpi-unidades').textContent = estab ? '1 (filtrada)' : this.data.kpis.n_estabelecimentos;
+        document.getElementById('kpi-cbos').textContent = this.data.kpis.n_cbos;
 
-        let melhor = null;
-        rows.forEach(r => { if (!melhor || r.apresentada > melhor.apresentada) melhor = r; });
-        document.getElementById('kpi-melhor-mes').textContent = melhor ? melhor.mes : '–';
-        document.getElementById('kpi-melhor-mes-valor').textContent = melhor ? fmtInt(melhor.apresentada) + ' atendimentos' : '–';
+        const s = this.seriesRede();
+        const deltaFor = (arr) => {
+            if (arr.length < 2) return null;
+            const prev = arr[arr.length - 2], curr = arr[arr.length - 1];
+            return prev ? 100 * (curr - prev) / prev : null;
+        };
+        const dApres = deltaFor(s.apresentada), dAprov = deltaFor(s.aprovada);
+        const renderDelta = (id, d) => {
+            const el = document.getElementById(id);
+            if (d === null || isNaN(d)) { el.textContent = ''; return; }
+            el.className = 'kpi-delta ' + (d >= 0 ? 'up' : 'down');
+            el.textContent = (d >= 0 ? '▲ ' : '▼ ') + fmtSigned(Math.abs(d)).replace('+','');
+            el.title = 'vs. mês anterior';
+        };
+        renderDelta('kpi-apresentada-delta', dApres);
+        renderDelta('kpi-aprovada-delta', dAprov);
 
-        const totais = estab
-            ? this.data.totais_estabelecimento.filter(t => t.estabelecimento === estab)
-            : this.data.totais_estabelecimento;
-        const lider = totais.slice().sort((a, b) => b.apresentada - a.apresentada)[0];
+        this.drawSparkline('spark-apresentada', s.apresentada, cssv('--series-1'));
+        this.drawSparkline('spark-aprovada', s.aprovada, cssv('--series-3'));
+
+        let melhorMes = null, melhorGlosaPct = Infinity;
+        s.labels.forEach((m, i) => {
+            const ap = s.apresentada[i], av = s.aprovada[i];
+            if (!ap) return;
+            const gp = round2(Math.max(0, 100 * (ap - av) / ap));
+            if (gp < melhorGlosaPct) { melhorGlosaPct = gp; melhorMes = m; }
+        });
+        document.getElementById('kpi-melhor-mes').textContent = melhorMes || '–';
+        document.getElementById('kpi-melhor-mes-valor').textContent = melhorMes ? fmtPct2(melhorGlosaPct) + ' de glosa' : '–';
+
+        // Unidade lider (menor % de glosa) e sempre sobre o periodo completo, sem filtros
+        const totais = this.unitTotalsFull().filter(t => t.apresentada > 0);
+        const lider = totais.slice().sort((a, b) => a.glosa_pct - b.glosa_pct || b.apresentada - a.apresentada)[0];
         document.getElementById('kpi-lider').textContent = lider ? (this.data.estabelecimentos_abrev[lider.estabelecimento] || lider.estabelecimento) : '–';
-        document.getElementById('kpi-lider-valor').textContent = lider ? fmtInt(lider.apresentada) + ' no período' : '–';
+        document.getElementById('kpi-lider-valor').textContent = lider ? fmtPct2(lider.glosa_pct) + ' de glosa no período completo' : '–';
     }
 
-    seriesRede() {
-        const estab = this.getEstab();
-        if (!estab) {
-            return {
-                labels: this.data.total_mes_rede.map(r => r.mes),
-                apresentada: this.data.total_mes_rede.map(r => r.apresentada),
-                aprovada: this.data.total_mes_rede.map(r => r.aprovada),
-            };
-        }
-        const rows = this.data.mensal.filter(r => r.estabelecimento === estab);
-        return {
-            labels: rows.map(r => r.mes),
-            apresentada: rows.map(r => r.apresentada),
-            aprovada: rows.map(r => r.aprovada),
-        };
+    drawSparkline(canvasId, values, color) {
+        if (this.charts[canvasId]) { this.charts[canvasId].destroy(); }
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        this.charts[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: { labels: values.map((_, i) => i), datasets: [{ data: values, borderColor: color, borderWidth: 1.5, pointRadius: 0, tension: .35, fill: false }] },
+            options: {
+                responsive: false, animation: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false } },
+                scales: { x: { display: false }, y: { display: false } },
+            },
+        });
     }
 
     renderCharts() {
         const s = this.seriesRede();
+        const glosa = s.labels.map((_, i) => round1(s.apresentada[i] - s.aprovada[i]));
+        // % de glosa = o quanto falta para a taxa de aprovacao chegar a 100%
+        const glosaPct = s.labels.map((_, i) => s.apresentada[i] ? round2(100 * (s.apresentada[i] - s.aprovada[i]) / s.apresentada[i]) : 0);
         this.charts.linha = new Chart(document.getElementById('chart-linha').getContext('2d'), {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: s.labels,
-                datasets: [
-                    { label: 'Apresentada', data: s.apresentada, borderColor: COLORS[0], backgroundColor: COLORS[0] + '22', borderWidth: 2, tension: .3, fill: true, pointRadius: 2 },
-                    { label: 'Aprovada', data: s.aprovada, borderColor: COLORS[2], backgroundColor: COLORS[2] + '22', borderWidth: 2, tension: .3, fill: true, pointRadius: 2 },
-                ],
+                datasets: [{
+                    label: 'Glosa (apresentada − aprovada)',
+                    data: glosa,
+                    backgroundColor: glosa.map(v => v >= 0 ? cssv('--series-2') : cssv('--series-1')),
+                    borderRadius: 4, barThickness: 26,
+                }],
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
-                scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmtInt(v) } } },
-            },
-        });
-
-        const totais = this.data.totais_estabelecimento.slice().sort((a, b) => b.apresentada - a.apresentada);
-        this.charts.ranking = new Chart(document.getElementById('chart-ranking').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: totais.map(t => this.data.estabelecimentos_abrev[t.estabelecimento] || t.estabelecimento),
-                datasets: [{ label: 'Apresentada', data: totais.map(t => t.apresentada), backgroundColor: COLORS[0] + 'CC', borderRadius: 4 }],
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-                plugins: { legend: { display: false } },
-                scales: { x: { beginAtZero: true, ticks: { callback: v => fmtInt(v) } } },
-            },
-        });
-
-        const taxaOrdenada = this.data.totais_estabelecimento.slice().sort((a, b) => b.taxa_aprovacao - a.taxa_aprovacao);
-        this.charts.taxa = new Chart(document.getElementById('chart-taxa').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: taxaOrdenada.map(t => this.data.estabelecimentos_abrev[t.estabelecimento] || t.estabelecimento),
-                datasets: [{ label: 'Taxa de aprovação (%)', data: taxaOrdenada.map(t => t.taxa_aprovacao), backgroundColor: taxaOrdenada.map(t => t.taxa_aprovacao >= 90 ? COLORS[2] : t.taxa_aprovacao >= 70 ? COLORS[1] : COLORS[3]), borderRadius: 4 }],
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-                plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmtPct(c.parsed.x) } } },
-                scales: { x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
-            },
-        });
-
-        this.renderCboChart();
-    }
-
-    renderCboChart() {
-        const estab = this.getEstab();
-        const items = estab ? (this.data.cbo_por_estabelecimento[estab] || []) : this.data.cbo_rede;
-        document.getElementById('cbo-title').textContent = estab ? 'Produção por Profissional-CBO — ' + (this.data.estabelecimentos_abrev[estab] || estab) : 'Produção por Profissional-CBO — Rede';
-        if (this.charts.cbo) this.charts.cbo.destroy();
-        this.charts.cbo = new Chart(document.getElementById('chart-cbo').getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: items.map(i => i.cbo),
-                datasets: [{ data: items.map(i => i.valor), backgroundColor: COLORS.map(c => c + 'CC'), borderColor: '#fff', borderWidth: 2 }],
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false, cutout: '58%',
+                layout: { padding: { top: 24 } },
                 plugins: {
-                    legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
-                    tooltip: { callbacks: { label: c => { const total = c.dataset.data.reduce((a, b) => a + b, 0); return c.label + ': ' + fmtInt(c.parsed) + ' (' + fmtPct(100 * c.parsed / total) + ')'; } } },
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: cssv('--ink'), titleColor: cssv('--page'), bodyColor: cssv('--page'), padding: 10, cornerRadius: 8,
+                        callbacks: {
+                            label: c => {
+                                const i = c.dataIndex;
+                                return c.parsed.y >= 0
+                                    ? `Glosa: ${fmtInt(c.parsed.y)} (${fmtPct2(glosaPct[i])} da apresentada)`
+                                    : `Aprovada excedeu em: ${fmtInt(Math.abs(c.parsed.y))}`;
+                            },
+                        },
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        offset: 4,
+                        color: cssv('--ink-2'), font: { size: 11, weight: '700' },
+                        formatter: (v, ctx) => fmtPct2(Math.abs(glosaPct[ctx.dataIndex])),
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: cssv('--muted') } },
+                    y: { grid: { color: cssv('--grid') }, ticks: { color: cssv('--muted'), callback: v => fmtInt(v) } },
                 },
             },
         });
+
+        const unitTotals = this.unitTotals();
+        const glosaOrdenada = unitTotals.slice().sort((a, b) => b.glosa_pct - a.glosa_pct);
+        this.charts.ranking = new Chart(document.getElementById('chart-ranking').getContext('2d'), {
+            type: 'bar',
+            data: { labels: glosaOrdenada.map(t => this.data.estabelecimentos_abrev[t.estabelecimento] || t.estabelecimento), datasets: [{ label: '% de glosa', data: glosaOrdenada.map(t => t.glosa_pct), backgroundColor: glosaOrdenada.map(t => glosaColor(t.glosa_pct)), borderRadius: 4, barThickness: 16 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: cssv('--ink'), titleColor: cssv('--page'), bodyColor: cssv('--page'), callbacks: { label: c => fmtPct2(c.parsed.x) + ' · ' + glosaLabel(c.parsed.x) } },
+                    datalabels: { anchor: 'end', align: 'end', color: cssv('--ink-2'), font: { size: 10, weight: '600' }, formatter: v => fmtPct2(v) },
+                },
+                layout: { padding: { right: 34 } },
+                scales: { x: { beginAtZero: true, grid: { color: cssv('--grid') }, ticks: { color: cssv('--muted'), callback: v => v + '%' } }, y: { grid: { display: false }, ticks: { color: cssv('--ink-2'), font: { size: 11 } } } },
+            },
+        });
+
+        const volumeOrdenado = unitTotals.slice().sort((a, b) => b.apresentada - a.apresentada);
+        this.charts.taxa = new Chart(document.getElementById('chart-taxa').getContext('2d'), {
+            type: 'bar',
+            data: { labels: volumeOrdenado.map(t => this.data.estabelecimentos_abrev[t.estabelecimento] || t.estabelecimento), datasets: [{ label: 'Apresentada', data: volumeOrdenado.map(t => t.apresentada), backgroundColor: cssv('--series-1'), borderRadius: 4, barThickness: 14 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: cssv('--ink'), titleColor: cssv('--page'), bodyColor: cssv('--page') },
+                    datalabels: { anchor: 'end', align: 'end', color: cssv('--ink-2'), font: { size: 10.5, weight: '600' }, formatter: v => fmtInt(v) },
+                },
+                layout: { padding: { right: 34 } },
+                scales: { x: { beginAtZero: true, grid: { color: cssv('--grid') }, ticks: { color: cssv('--muted'), callback: v => fmtInt(v) } }, y: { grid: { display: false }, ticks: { color: cssv('--ink-2'), font: { size: 10.5 } } } },
+            },
+        });
+
+        this.renderCboChart('medicos', 'chart-cbo-medicos', 'cbo-medicos-title', 'cbo-medicos-sub', 'Top Profissional-CBO — Médicos', 'especialidade médica');
+        this.renderCboChart('nao_medicos', 'chart-cbo-nao-medicos', 'cbo-nao-medicos-title', 'cbo-nao-medicos-sub', 'Top Profissional-CBO — Não-Médicos', 'categoria profissional');
     }
 
-    updateCharts() {
-        const s = this.seriesRede();
-        const l = this.charts.linha;
-        l.data.labels = s.labels;
-        l.data.datasets[0].data = s.apresentada;
-        l.data.datasets[1].data = s.aprovada;
-        document.getElementById('linha-sub').textContent = this.getEstab() ? (this.data.estabelecimentos_abrev[this.getEstab()] || this.getEstab()) : 'Total da rede (todas as unidades)';
-        l.update('none');
-        this.renderCboChart();
+    renderCboChart(categoria, canvasId, titleId, subId, tituloBase, subBase) {
+        const estab = this.getEstab();
+        const porEstab = categoria === 'medicos' ? this.data.cbo_por_estabelecimento_medicos : this.data.cbo_por_estabelecimento_nao_medicos;
+        const rede = categoria === 'medicos' ? this.data.cbo_rede_medicos : this.data.cbo_rede_nao_medicos;
+        const items = (estab ? (porEstab[estab] || []) : rede)
+            .filter(i => i.cbo !== 'Outros').slice().sort((a, b) => a.valor - b.valor);
+        document.getElementById(titleId).textContent = estab ? tituloBase + ' — ' + (this.data.estabelecimentos_abrev[estab] || estab) : tituloBase + ' — Rede';
+        document.getElementById(subId).textContent = 'Qtd. apresentada por ' + subBase + (estab ? '' : ' · período completo');
+        const key = 'cbo_' + categoria;
+        if (this.charts[key]) this.charts[key].destroy();
+        this.charts[key] = new Chart(document.getElementById(canvasId).getContext('2d'), {
+            type: 'bar',
+            data: { labels: items.map(i => i.cbo), datasets: [{ data: items.map(i => i.valor), backgroundColor: cssv('--series-1'), borderRadius: 4, barThickness: 14 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: cssv('--ink'), titleColor: cssv('--page'), bodyColor: cssv('--page') },
+                    datalabels: { anchor: 'end', align: 'end', color: cssv('--ink-2'), font: { size: 10.5, weight: '600' }, formatter: v => fmtInt(v) },
+                },
+                layout: { padding: { right: 34 } },
+                scales: { x: { beginAtZero: true, grid: { color: cssv('--grid') }, ticks: { color: cssv('--muted'), callback: v => fmtInt(v) } }, y: { grid: { display: false }, ticks: { color: cssv('--ink-2'), font: { size: 10.5 } } } },
+            },
+        });
+    }
+
+    renderHeatmap() {
+        document.getElementById('hm-tooltip').style.opacity = '0';
+        const estab = this.getEstab();
+        const ano = this.getAno();
+        const totaisPorEstab = this.unitTotals();
+        const glosaTotal = e => { const t = totaisPorEstab.find(x => x.estabelecimento === e); return t ? Math.max(0, t.apresentada - t.aprovada) : 0; };
+        const estabs = estab ? [estab] : this.data.estabelecimentos.slice().sort((a, b) => glosaTotal(b) - glosaTotal(a));
+        const meses = this.data.meses.filter(m => !ano || mesAno(m) === ano).sort((a, b) => mesChave(a) - mesChave(b));
+        const lookup = {};
+        this.data.mensal.forEach(r => { lookup[r.estabelecimento + '|' + r.mes] = Math.max(0, r.apresentada - r.aprovada); });
+        const max = Math.max(1, ...Object.values(lookup));
+
+        const el = document.getElementById('heatmap');
+        el.innerHTML = '';
+        const grid = document.createElement('div');
+        grid.className = 'heatmap-grid';
+        grid.style.gridTemplateColumns = '170px repeat(' + meses.length + ', 1fr)';
+        el.appendChild(grid);
+
+        const corner = document.createElement('div');
+        grid.appendChild(corner);
+        meses.forEach(m => {
+            const lab = document.createElement('div');
+            lab.className = 'heatmap-col-label';
+            lab.textContent = m;
+            grid.appendChild(lab);
+        });
+
+        const tooltip = document.getElementById('hm-tooltip');
+        const seriesColor = getComputedStyle(document.documentElement).getPropertyValue('--series-2').trim();
+        const rgb = seriesColor.match(/[0-9a-f]{2}/gi).map(h => parseInt(h, 16));
+
+        estabs.forEach(e => {
+            const rowLabel = document.createElement('div');
+            rowLabel.className = 'heatmap-row-label';
+            rowLabel.textContent = this.data.estabelecimentos_abrev[e] || e;
+            grid.appendChild(rowLabel);
+            meses.forEach(m => {
+                const v = lookup[e + '|' + m] || 0;
+                const alpha = v ? 0.12 + 0.80 * (v / max) : 0.05;
+                const cell = document.createElement('div');
+                cell.className = 'heatmap-cell';
+                cell.style.background = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
+                const label = document.createElement('span');
+                label.className = 'heatmap-value';
+                label.style.color = alpha >= 0.45 ? '#ffffff' : cssv('--ink');
+                label.textContent = fmtInt(v);
+                cell.appendChild(label);
+                cell.addEventListener('mousemove', (ev) => {
+                    tooltip.style.opacity = '1';
+                    tooltip.style.left = (ev.clientX + 14) + 'px';
+                    tooltip.style.top = (ev.clientY + 14) + 'px';
+                    tooltip.textContent = (this.data.estabelecimentos_abrev[e] || e) + ' · ' + m + ': ' + fmtInt(v) + ' glosas';
+                });
+                cell.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+                grid.appendChild(cell);
+            });
+        });
+    }
+
+    updateChartColors() {
+        // charts are destroyed/rebuilt on theme change via full re-render
     }
 
     renderTable() {
@@ -366,7 +799,7 @@ class Dashboard {
             { field: 'mes', label: 'Mês' },
             { field: 'apresentada', label: 'Apresentada', fmt: fmtInt },
             { field: 'aprovada', label: 'Aprovada', fmt: fmtInt },
-            { field: 'taxa_aprovacao', label: 'Taxa Aprov.', fmt: fmtPct, badge: true },
+            { field: 'taxa_aprovacao', label: 'Taxa Aprov.', fmt: fmtPct2, badge: true },
         ];
 
         const render = (data) => {
@@ -376,7 +809,7 @@ class Dashboard {
                 html += `<th data-field="${col.field}">${col.label}${arrow}</th>`;
             });
             html += '</tr></thead><tbody>';
-            data.slice(0, 300).forEach(row => {
+            data.slice(0, 400).forEach(row => {
                 html += '<tr>';
                 columns.forEach(col => {
                     let raw = row[col.field];
@@ -404,7 +837,6 @@ class Dashboard {
         const sorted = rows.slice().sort((a, b) => {
             const f = this.sortState.field;
             let av = a[f], bv = b[f];
-            if (f === 'mes') { av = a.__ord || 0; bv = b.__ord || 0; }
             const cmp = av < bv ? -1 : av > bv ? 1 : 0;
             return this.sortState.dir === 'asc' ? cmp : -cmp;
         });
@@ -412,7 +844,29 @@ class Dashboard {
     }
 }
 
+function setTheme(mode) {
+    if (mode) { document.documentElement.setAttribute('data-theme', mode); localStorage.setItem('tabnet-theme', mode); }
+    const isDark = mode === 'dark' || (!mode && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const btn = document.getElementById('theme-toggle');
+    btn.innerHTML = isDark ? '☀️ <span>Modo claro</span>' : '🌙 <span>Modo escuro</span>';
+}
+
+const savedTheme = localStorage.getItem('tabnet-theme');
+if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+setTheme(savedTheme);
+
 const dashboard = new Dashboard(TABNET_DATA);
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = current === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    dashboard.destroyCharts();
+    dashboard.renderCharts();
+    dashboard.renderHeatmap();
+});
+
+document.getElementById('refresh-btn').addEventListener('click', () => dashboard.reload());
 </script>
 </body>
 </html>

@@ -25,14 +25,40 @@ def mes_chave(label):
     return (ano, MES_ORDEM.get(mes, 99))
 
 
+PSEUDONIMOS = {
+    "SMS CENTRO CARIOCA DE REABILITACAO DA ZONA OESTE AP 52": "CCRZO",
+    "SMS CENTRO CARIOCA DE ESPECIALIDADE DA ZONA OESTE AP 52": "CCEZO",
+    "SMS POLICLINICA MANOEL GUILHERME PAM BANGU AP 51": "PMGSF",
+    "SMS POLICLINICA NEWTON ALVES CARDOZO AP 31": "PNAC",
+    "SMS POLICLINICA LINCOLN DE FREITAS FILHO AP 53": "PLFF",
+    "SMS POLICLINICA NEWTON BETHLEM AP 40": "PNB",
+    "SMS POLICLINICA RODOLPHO ROCCO AP 32": "PRR",
+    "SMS POLICLINICA CARLOS ALBERTO NASCIMENTO AP 52": "PCAN",
+    "SMS POLICLINICA JOSE PARANHOS FONTENELLE AP 31": "PJPF",
+    "SMS POLICLINICA ANTONIO RIBEIRO NETTO AP 10": "PARN",
+    "SMS POLICLINICA HELIO PELLEGRINO AP 22": "PHP",
+    "SMS POLICLINICA ROCHA MAIA AP 21": "PRM",
+}
+
+
 def abreviar_nome(nome):
+    if nome in PSEUDONIMOS:
+        return PSEUDONIMOS[nome]
     nome = nome.replace("SMS POLICLINICA ", "").replace("SMS CENTRO CARIOCA DE ", "C.C. ")
     return nome.strip()
 
 
+def eh_medico(profissional_cbo):
+    """Classifica pelo nome da ocupacao (apos o codigo CBO): 'Medico...' = medico.
+    Ex.: '225135 Medico dermatologista' -> medico; '221205 Biomedico' -> nao medico."""
+    partes = profissional_cbo.split(" ", 1)
+    nome_ocupacao = (partes[1] if len(partes) > 1 else profissional_cbo).strip().lower()
+    return nome_ocupacao.startswith("médico") or nome_ocupacao.startswith("medico")
+
+
 def main():
     df = pd.read_csv(IN_CSV, encoding="utf-8")
-    df = df[df["mes_atendimento"].apply(lambda x: mes_chave(x)[0] >= 2023)].copy()
+    df = df[df["mes_atendimento"].apply(lambda x: mes_chave(x)[0] >= 2026)].copy()
     df["mes_ord"] = df["mes_atendimento"].apply(mes_chave)
 
     meses = sorted(df["mes_atendimento"].unique(), key=mes_chave)
@@ -56,7 +82,7 @@ def main():
     for _, r in pivot.iterrows():
         apresentada = float(r["apresentada"])
         aprovada = float(r["aprovada"])
-        taxa = round(100.0 * aprovada / apresentada, 1) if apresentada else 0.0
+        taxa = round(100.0 * aprovada / apresentada, 2) if apresentada else 0.0
         monthly_records.append(
             {
                 "estabelecimento": r["estabelecimento_nome"],
@@ -80,7 +106,7 @@ def main():
     for _, r in totals.iterrows():
         apresentada = float(r["apresentada"])
         aprovada = float(r["aprovada"])
-        taxa = round(100.0 * aprovada / apresentada, 1) if apresentada else 0.0
+        taxa = round(100.0 * aprovada / apresentada, 2) if apresentada else 0.0
         totals_records.append(
             {
                 "estabelecimento": r["estabelecimento_nome"],
@@ -111,26 +137,29 @@ def main():
         for _, r in total_mes.iterrows()
     ]
 
-    # 4) Top CBOs por estabelecimento (top 8, resto agrupado em "Outros")
+    # 4) Top CBOs por estabelecimento, separados em Medicos / Nao-Medicos (top 8 cada, resto em "Outros")
     cbo_tot = df.groupby(["estabelecimento_nome", "profissional_cbo", "conteudo"], as_index=False)["valor"].sum()
-    cbo_apresentada = cbo_tot[cbo_tot["conteudo"] == "apresentada"]
-    cbo_by_estab = {}
-    for estab, grp in cbo_apresentada.groupby("estabelecimento_nome"):
+    cbo_apresentada = cbo_tot[cbo_tot["conteudo"] == "apresentada"].copy()
+    cbo_apresentada["categoria"] = cbo_apresentada["profissional_cbo"].apply(lambda c: "medicos" if eh_medico(c) else "nao_medicos")
+
+    def montar_top(grp, n=8):
         grp = grp.sort_values("valor", ascending=False)
-        top = grp.head(8)
-        outros_valor = grp["valor"].iloc[8:].sum() if len(grp) > 8 else 0.0
+        top = grp.head(n)
+        outros_valor = grp["valor"].iloc[n:].sum() if len(grp) > n else 0.0
         itens = [{"cbo": row["profissional_cbo"], "valor": float(row["valor"])} for _, row in top.iterrows()]
         if outros_valor > 0:
             itens.append({"cbo": "Outros", "valor": float(outros_valor)})
-        cbo_by_estab[estab] = itens
+        return itens
 
-    # 5) Top CBOs geral (rede toda)
-    cbo_rede = cbo_apresentada.groupby("profissional_cbo", as_index=False)["valor"].sum().sort_values("valor", ascending=False)
-    top_rede = cbo_rede.head(10)
-    outros_rede = cbo_rede["valor"].iloc[10:].sum() if len(cbo_rede) > 10 else 0.0
-    cbo_rede_records = [{"cbo": r["profissional_cbo"], "valor": float(r["valor"])} for _, r in top_rede.iterrows()]
-    if outros_rede > 0:
-        cbo_rede_records.append({"cbo": "Outros", "valor": float(outros_rede)})
+    cbo_by_estab = {"medicos": {}, "nao_medicos": {}}
+    for (estab, categoria), grp in cbo_apresentada.groupby(["estabelecimento_nome", "categoria"]):
+        cbo_by_estab[categoria][estab] = montar_top(grp)
+
+    # 5) Top CBOs geral (rede toda), separados em Medicos / Nao-Medicos
+    cbo_rede_por_categoria = {}
+    for categoria, grp in cbo_apresentada.groupby("categoria"):
+        agregado = grp.groupby("profissional_cbo", as_index=False)["valor"].sum()
+        cbo_rede_por_categoria[categoria] = montar_top(agregado, n=10)
 
     payload = {
         "meses": list(meses),
@@ -139,20 +168,26 @@ def main():
         "mensal": monthly_records,
         "totais_estabelecimento": totals_records,
         "total_mes_rede": total_mes_records,
-        "cbo_por_estabelecimento": cbo_by_estab,
-        "cbo_rede": cbo_rede_records,
+        "cbo_por_estabelecimento_medicos": cbo_by_estab["medicos"],
+        "cbo_por_estabelecimento_nao_medicos": cbo_by_estab["nao_medicos"],
+        "cbo_rede_medicos": cbo_rede_por_categoria.get("medicos", []),
+        "cbo_rede_nao_medicos": cbo_rede_por_categoria.get("nao_medicos", []),
         "kpis": {
             "total_apresentada": float(df[df["conteudo"] == "apresentada"]["valor"].sum()),
             "total_aprovada": float(df[df["conteudo"] == "aprovada"]["valor"].sum()),
             "n_estabelecimentos": len(estabelecimentos),
             "n_meses": len(meses),
+            "n_cbos": int(df[df["conteudo"] == "apresentada"]["profissional_cbo"].nunique()),
             "periodo_inicio": meses[0] if meses else None,
             "periodo_fim": meses[-1] if meses else None,
         },
     }
     total_apresentada = payload["kpis"]["total_apresentada"]
     total_aprovada = payload["kpis"]["total_aprovada"]
+    n_meses = payload["kpis"]["n_meses"] or 1
     payload["kpis"]["taxa_aprovacao_geral"] = round(100.0 * total_aprovada / total_apresentada, 1) if total_apresentada else 0.0
+    payload["kpis"]["media_mensal_apresentada"] = round(total_apresentada / n_meses, 1)
+    payload["kpis"]["media_mensal_aprovada"] = round(total_aprovada / n_meses, 1)
 
     os.makedirs(os.path.dirname(OUT_JS), exist_ok=True)
     with open(OUT_JS, "w", encoding="utf-8") as f:

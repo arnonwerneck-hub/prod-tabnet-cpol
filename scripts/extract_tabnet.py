@@ -10,6 +10,7 @@ em .xlsx por outro script.
 import concurrent.futures
 import csv
 import html
+import http.client
 import os
 import re
 import sys
@@ -213,6 +214,17 @@ def fetch(estab_codigo, conteudo_valor, arquivos_chunk, tentativas=6):
             with urllib.request.urlopen(req, timeout=100) as resp:
                 raw = resp.read()
             return raw.decode("latin-1", errors="replace")
+        except http.client.IncompleteRead as e:
+            # O TabNet as vezes fecha a conexao sem terminar o chunked-encoding
+            # corretamente mesmo tendo enviado a resposta inteira (comum em
+            # paginas curtas de "Nenhum registro selecionado"). Os bytes ja
+            # recebidos normalmente sao a resposta completa.
+            if e.partial:
+                return e.partial.decode("latin-1", errors="replace")
+            if tentativa == tentativas:
+                print(f"  [ERRO] estab={estab_codigo} conteudo={conteudo_valor} chunk={arquivos_chunk[0][1]}..{arquivos_chunk[-1][1]}: {e}", file=sys.stderr, flush=True)
+                return None
+            time.sleep(min(8 * tentativa, 45))
         except Exception as e:
             if tentativa == tentativas:
                 print(f"  [ERRO] estab={estab_codigo} conteudo={conteudo_valor} chunk={arquivos_chunk[0][1]}..{arquivos_chunk[-1][1]}: {e}", file=sys.stderr, flush=True)
@@ -220,6 +232,15 @@ def fetch(estab_codigo, conteudo_valor, arquivos_chunk, tentativas=6):
             espera = min(8 * tentativa, 45)
             time.sleep(espera)
     return None
+
+
+def resposta_confirma_vazio(html_text):
+    """So aceitamos 'zero linhas' quando a pagina explicitamente diz que nao
+    ha registros. Uma resposta truncada por reset de conexao do servidor
+    (comum em consultas de varios meses de uma vez) tem exatamente a mesma
+    forma no inicio e NAO pode ser tratada como vazia - senao perdemos dados
+    reais silenciosamente."""
+    return "nenhum registro" in html_text.lower()
 
 
 def chunked(lst, n):
@@ -232,7 +253,7 @@ def task_key(tarefa):
     return f"{estab_codigo}|{conteudo_nome}|{arquivos_chunk[0][0]}"
 
 
-def processar_tarefa(tarefa):
+def processar_tarefa(tarefa, profundidade=0):
     estab_codigo, conteudo_nome, conteudo_valor, arquivos_chunk = tarefa
     html_text = fetch(estab_codigo, conteudo_valor, arquivos_chunk)
     resultados = []
@@ -240,6 +261,20 @@ def processar_tarefa(tarefa):
         return False, resultados
     col_labels, linhas = parse_tabela(html_text)
     if col_labels is None:
+        if resposta_confirma_vazio(html_text):
+            return True, resultados
+        # Resposta truncada/ambigua (ex.: reset de conexao no meio de uma
+        # consulta de varios meses) - NAO aceitar como "sem dados". Se o
+        # chunk tiver mais de 1 mes, divide ao meio e tenta cada metade
+        # separadamente (consultas menores tem bem menos chance de estourar
+        # o limite que causa o reset no servidor).
+        if len(arquivos_chunk) > 1:
+            meio = len(arquivos_chunk) // 2
+            ok1, res1 = processar_tarefa((estab_codigo, conteudo_nome, conteudo_valor, arquivos_chunk[:meio]), profundidade + 1)
+            ok2, res2 = processar_tarefa((estab_codigo, conteudo_nome, conteudo_valor, arquivos_chunk[meio:]), profundidade + 1)
+            return (ok1 and ok2), res1 + res2
+        # Ja no menor grao (1 mes) e ainda ambiguo: falha de verdade, nao
+        # inventar um zero.
         return False, resultados
     for rotulo, valores in linhas:
         for col_label, valor in zip(col_labels, valores):
