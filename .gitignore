@@ -5,3 +5,8 @@ data/tabnet_checkpoint.txt
 data/*.partial_bak
 node_modules/
 .vercel/
+# Extrator de questões: arquivos gerados e PDFs locais
+extrator_questoes/pdfs/*
+!extrator_questoes/pdfs/.gitkeep
+extrator_questoes/imagens/
+extrator_questoes/banco_questoes.*
