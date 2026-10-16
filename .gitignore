@@ -5,5 +5,3 @@ data/tabnet_checkpoint.txt
 data/*.partial_bak
 node_modules/
 .vercel/
-# Extrator de questões: arquivos temporários do SQLite
-extrator_questoes/banco_questoes.db-*
