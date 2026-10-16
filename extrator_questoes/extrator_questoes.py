@@ -898,6 +898,278 @@ def separar_questoes(itens):
 
 
 # =====================================================================
+#  MODO QCONCURSOS (PDFs exportados do site www.qconcursos.com)
+# =====================================================================
+# Os PDFs do QConcursos têm um formato fixo e muito informativo. Cada
+# questão começa assim:
+#
+#   1 Q4305417 Estatística > Estatística descritiva , Tipos de variáveis
+#   Ano: 2026 Banca: VUNESP Órgão: PREVCOM Prova: VUNESP - 2026 - PREVCOM - Analista
+#   (enunciado...)
+#   A primeira alternativa      <- a letra vem em NEGRITO
+#   B segunda alternativa
+#
+# e no fim do arquivo há uma página "Respostas" (1: E 2: B 3: A ...).
+# Aqui aproveitamos tudo isso: Disciplina e Assunto vêm prontos, e o
+# código "Q4305417" vira o ID único (a mesma questão em dois PDFs
+# diferentes é gravada uma só vez).
+
+# O número da questão ("1 ") às vezes não aparece; só o código "Q3586110".
+RE_QC_NUMERO = re.compile(r"^(?:(\d{1,4})\s+)?(Q\d{4,})\b\s*(.*)$")
+RE_QC_CABECALHO = re.compile(
+    r"Ano:\s*(\d{4})\s*Banca:\s*(.*?)\s*Órgão:\s*(.*?)\s*Provas?:\s*(.*?)[\s.…]*$", re.IGNORECASE)
+
+
+def eh_pdf_qconcursos(caminho):
+    """Diz se o PDF foi exportado do QConcursos (olha as 2 primeiras páginas)."""
+    with pdfplumber.open(caminho) as pdf:
+        if not pdf.pages:
+            return False
+        texto = "\n".join((pg.extract_text() or "") for pg in pdf.pages[:2])
+    return "qconcursos.com" in texto.lower() and bool(re.search(r"^(\d+\s+)?Q\d{4,}\b", texto, re.M))
+
+
+def _linhas_qconcursos(caminho, hash_arquivo):
+    """Lê o PDF e devolve a lista de linhas (com fonte, tamanho e
+    posição) e de imagens, na ordem da página (de cima para baixo)."""
+    itens = []
+    with pdfplumber.open(caminho) as pdf:
+        repeticoes = Counter()
+        for pagina in pdf.pages:
+            for img in pagina.images:
+                repeticoes[(img.get("name"), tuple(img.get("srcsize") or ()))] += 1
+        for num_pag, pagina in enumerate(pdf.pages, start=1):
+            elementos = []
+            for linha in pagina.extract_text_lines(return_chars=True):
+                texto = linha["text"].strip()
+                if not texto or "qconcursos.com" in texto.lower():
+                    continue
+                c0 = linha["chars"][0]
+                elementos.append({
+                    "tipo": "texto", "texto": texto, "pagina": num_pag,
+                    "x0": linha["x0"], "top": linha["top"],
+                    "tamanho": round(c0["size"], 1),
+                    "negrito": "BOLD" in c0["fontname"].upper(),
+                })
+            if SALVAR_IMAGENS:
+                for img in pagina.images:
+                    chave = (img.get("name"), tuple(img.get("srcsize") or ()))
+                    if len(pdf.pages) > 2 and repeticoes[chave] >= 3:
+                        continue
+                    caminho_img = salvar_imagem(pagina, img, hash_arquivo, num_pag)
+                    if caminho_img:
+                        elementos.append({"tipo": "imagem", "texto": caminho_img,
+                                          "pagina": num_pag, "top": img["top"]})
+            elementos.sort(key=lambda e: e["top"])
+            itens.extend(elementos)
+    return itens
+
+
+def _eh_marcador_alternativa(item):
+    """A letra da alternativa (A–E) aparece em negrito, na margem esquerda."""
+    return (item["tipo"] == "texto" and item["negrito"] and item["x0"] < 50
+            and re.match(r"^[A-E](\s|$)", item["texto"]) is not None
+            and not item["texto"].startswith("Ano:"))
+
+
+def _separar_cargo(prova, banca, ano, orgao):
+    """'VUNESP - 2026 - PREVCOM - Analista de Tecnologia' -> 'Analista de Tecnologia'"""
+    resto = prova
+    m = re.search(rf"\b{ano}\b\s*-\s*", resto)
+    if m:
+        resto = resto[m.end():]
+    if orgao and resto.startswith(orgao):
+        resto = resto[len(orgao):]
+    resto = resto.strip(" -–")
+    return resto or NAO_IDENTIFICADO
+
+
+def _classificacao(texto):
+    """'Estatística > Descritiva , Tipos de variáveis' ->
+       ('Estatística', 'Descritiva; Tipos de variáveis')"""
+    texto = re.sub(r"\s+", " ", texto).strip(" ,")
+    disciplinas, assuntos = [], []
+    for parte in re.split(r"\s+,\s+", texto):
+        parte = parte.strip(" ,")
+        if not parte:
+            continue
+        if ">" in parte:
+            disc, _, ass = parte.partition(">")
+            disc, ass = disc.strip(), ass.strip()
+            if disc and disc not in disciplinas:
+                disciplinas.append(disc)
+            if ass:
+                assuntos.append(ass)
+        else:
+            assuntos.append(parte)
+    return ("; ".join(disciplinas) or NAO_IDENTIFICADO,
+            "; ".join(dict.fromkeys(assuntos)) or NAO_IDENTIFICADO)
+
+
+def separar_questoes_qconcursos(itens):
+    """Monta as questões a partir das linhas de um PDF do QConcursos."""
+    # 1) Encontra o bloco "Respostas" (gabarito) no fim do arquivo.
+    gabarito = {}
+    for i, it in enumerate(itens):
+        if it["tipo"] == "texto" and it["texto"].strip().lower() == "respostas":
+            trecho = [x["texto"] for x in itens[i + 1:] if x["tipo"] == "texto"]
+            gabarito = ler_pares_gabarito(trecho)
+            itens = itens[:i]
+            break
+
+    # 2) Localiza as linhas de início de questão ("1 Q4305417 ...").
+    inicios = [i for i, it in enumerate(itens)
+               if it["tipo"] == "texto" and it["negrito"] and it["x0"] < 60
+               and RE_QC_NUMERO.match(it["texto"])]
+
+    # 3) A classificação (Disciplina > Assunto) às vezes quebra em linhas
+    #    logo ACIMA e ABAIXO da linha do número. São linhas pequenas,
+    #    à direita (x > 100), sem negrito, próximas da linha do número.
+    #    Cada uma dessas linhas vai para a linha de número mais próxima.
+    dono_classificacao = {}
+    for j, it in enumerate(itens):
+        if it["tipo"] != "texto" or it["negrito"] or it["x0"] <= 100 or it["tamanho"] >= 9:
+            continue
+        candidatos = [i for i in inicios if itens[i]["pagina"] == it["pagina"]
+                      and abs(itens[i]["top"] - it["top"]) <= 45]
+        if candidatos:
+            dono_classificacao[j] = min(candidatos, key=lambda i: abs(itens[i]["top"] - it["top"]))
+
+    questoes = []
+    for k, i in enumerate(inicios):
+        fim = inicios[k + 1] if k + 1 < len(inicios) else len(itens)
+        m = RE_QC_NUMERO.match(itens[i]["texto"])
+        numero = int(m.group(1)) if m.group(1) else None
+        qid = m.group(2)
+
+        # Classificação: junta as partes na ordem vertical.
+        partes = [(itens[i]["top"], m.group(3))]
+        partes += [(itens[j]["top"], itens[j]["texto"]) for j, d in dono_classificacao.items() if d == i]
+        # (cada quebra de linha também separa assuntos)
+        disciplina, assunto = _classificacao(" , ".join(t for _, t in sorted(partes) if t.strip()))
+
+        # Corpo da questão (ignorando as linhas de classificação).
+        corpo = [itens[j] for j in range(i + 1, fim) if j not in dono_classificacao]
+
+        # Classificações muito longas podem ter linhas extras antes do "Ano:".
+        for pos_ano in range(min(5, len(corpo))):
+            if corpo[pos_ano]["tipo"] == "texto" and corpo[pos_ano]["texto"].startswith("Ano:"):
+                extras = [c["texto"] for c in corpo[:pos_ano] if c["tipo"] == "texto" and c["tamanho"] < 9]
+                if len(extras) == pos_ano:
+                    disciplina, assunto = _classificacao(" , ".join(
+                        [t for _, t in sorted(partes) if t.strip()] + extras))
+                    corpo = corpo[pos_ano:]
+                break
+
+        # Cabeçalho "Ano: ... Banca: ... Órgão: ... Prova: ..." (pode quebrar linha)
+        cabecalho, pos = "", 0
+        while pos < len(corpo) and corpo[pos]["tipo"] == "texto" and (
+                corpo[pos]["texto"].startswith("Ano:") or (cabecalho and corpo[pos]["tamanho"] < 9)):
+            cabecalho += " " + corpo[pos]["texto"]
+            pos += 1
+        corpo = corpo[pos:]
+        cab = RE_QC_CABECALHO.search(cabecalho.strip())
+        if cab:
+            ano, banca, orgao, prova = (g.strip() for g in cab.groups())
+            cargo = _separar_cargo(prova, banca, ano, orgao)
+        else:
+            ano = banca = orgao = cargo = NAO_IDENTIFICADO
+            prova = ""
+
+        # Separa enunciado e alternativas usando a posição das letras.
+        marcadores = [it for it in corpo if _eh_marcador_alternativa(it)]
+        alternativas = {}            # letra -> lista de (página, posição, texto)
+        enunciado, imagens = [], []
+        letra_atual = None
+        for it in corpo:
+            if it["tipo"] == "imagem":
+                imagens.append(it["texto"])
+                continue
+            if it in marcadores:
+                letra_atual = it["texto"][0]
+                alternativas.setdefault(letra_atual, [])
+                resto = it["texto"][1:].strip()
+                if resto:
+                    alternativas[letra_atual].append((it["pagina"], it["top"], resto))
+                continue
+            # Itens de Certo/Errado (Cebraspe)
+            if it["texto"] in ("Certo", "Errado") and it["x0"] >= 50:
+                alternativas[it["texto"][0]] = [(it["pagina"], it["top"], it["texto"])]
+                letra_atual = it["texto"][0]
+                continue
+            # Linha de alternativa longa: a letra fica sozinha, "no meio"
+            # das linhas. Procuramos a letra mais próxima verticalmente.
+            perto = [mk for mk in marcadores if mk["pagina"] == it["pagina"]
+                     and len(mk["texto"].strip()) == 1 and abs(mk["top"] - it["top"]) <= 10]
+            if perto and it["x0"] >= 50:
+                letra = min(perto, key=lambda mk: abs(mk["top"] - it["top"]))["texto"][0]
+                alternativas.setdefault(letra, []).append((it["pagina"], it["top"], it["texto"]))
+            elif letra_atual:
+                alternativas[letra_atual].append((it["pagina"], it["top"], it["texto"]))
+            else:
+                enunciado.append(it["texto"])
+
+        alts = {}
+        for letra in sorted(alternativas):
+            linhas = [t for _, _, t in sorted(alternativas[letra])]
+            alts[letra] = juntar_linhas(linhas)
+
+        questoes.append({
+            "id": qid, "numero": numero, "banca": banca, "ano": ano, "orgao": orgao,
+            "cargo": cargo, "prova": prova, "disciplina": disciplina, "assunto": assunto,
+            "enunciado": juntar_linhas(enunciado), "alternativas": alts,
+            "imagens": imagens,
+        })
+
+    # Se o PDF não trouxe os números das questões, numeramos pela ordem,
+    # alinhando com os números da página "Respostas" (ex.: 381, 382...).
+    if any(q["numero"] is None for q in questoes):
+        numeros_resp = sorted(gabarito)
+        if len(numeros_resp) == len(questoes):
+            for q, n in zip(questoes, numeros_resp):
+                q["numero"] = n
+        else:
+            for pos, q in enumerate(questoes, start=1):
+                q["numero"] = pos
+    for q in questoes:
+        q["gabarito"] = gabarito.get(q["numero"], NAO_IDENTIFICADO)
+    return questoes
+
+
+def processar_pdf_qconcursos(con, caminho, hash_arquivo):
+    """Grava no banco as questões de um PDF do QConcursos."""
+    nome = caminho.name
+    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    questoes = separar_questoes_qconcursos(_linhas_qconcursos(caminho, hash_arquivo))
+    novas = 0
+    for q in questoes:
+        alternativas = json.dumps(q["alternativas"], ensure_ascii=False)
+        cur = con.execute(
+            """INSERT OR IGNORE INTO questoes
+               (id, hash_conteudo, banca, ano, orgao, cargo, disciplina, assunto,
+                numero, enunciado, alternativas, gabarito, imagens,
+                arquivo_origem, chave_prova, data_inclusao)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (q["id"], hash_de_texto(q["id"]), q["banca"], q["ano"], q["orgao"], q["cargo"],
+             q["disciplina"], q["assunto"], q["numero"], q["enunciado"], alternativas,
+             q["gabarito"], json.dumps(q["imagens"], ensure_ascii=False), nome, q["prova"], agora),
+        )
+        if cur.rowcount:
+            novas += 1
+        elif q["gabarito"] != NAO_IDENTIFICADO:
+            # Questão já existia: só completa o gabarito, se estiver faltando.
+            con.execute("UPDATE questoes SET gabarito=? WHERE id=? AND gabarito=?",
+                        (q["gabarito"], q["id"], NAO_IDENTIFICADO))
+    con.execute("INSERT OR REPLACE INTO arquivos_processados VALUES (?,?,?,?,?,?)",
+                (hash_arquivo, nome, "prova_qconcursos", chave_da_prova(nome), novas, agora))
+    com_gab = sum(1 for q in questoes if q["gabarito"] != NAO_IDENTIFICADO)
+    repetidas = len(questoes) - novas
+    print(f"      [QConcursos] {len(questoes)} questões ({com_gab} com gabarito), "
+          f"{novas} novas" + (f", {repetidas} já existiam no banco" if repetidas else "") + ".")
+    return novas
+
+
+# =====================================================================
 #  PROCESSAMENTO DE UM ARQUIVO
 # =====================================================================
 
@@ -906,6 +1178,10 @@ def processar_pdf(con, caminho, hash_arquivo):
     nome = caminho.name
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     chave = chave_da_prova(nome)
+
+    # PDFs do QConcursos têm um formato próprio, lido de forma especial.
+    if eh_pdf_qconcursos(caminho):
+        return processar_pdf_qconcursos(con, caminho, hash_arquivo)
 
     itens, texto_inicial = ler_pdf(caminho, hash_arquivo)
     linhas_texto = [i["conteudo"] for i in itens if i["tipo"] == "texto"]

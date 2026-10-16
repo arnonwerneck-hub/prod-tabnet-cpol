@@ -200,6 +200,23 @@ Depois de mudar as listas, para **reprocessar tudo** do zero: apague
 
 ---
 
+## 8.1 PDFs exportados do QConcursos
+
+O programa reconhece sozinho os PDFs gerados pelo site **QConcursos**
+(têm "www.qconcursos.com" no topo) e usa um leitor próprio para eles:
+
+- **ID único** = o código da questão no site (ex.: `Q4305417`). A mesma
+  questão em vários PDFs é gravada uma única vez.
+- **Banca, Ano, Órgão e Cargo** vêm da linha `Ano: ... Banca: ... Órgão: ... Prova: ...`.
+- **Disciplina e Assunto** vêm da classificação do site
+  (`Estatística > Tipos de variáveis , ...`). Vários assuntos ficam
+  separados por `;`.
+- **Gabarito** vem da página "Respostas" no fim do PDF. Ao exportar no
+  QConcursos, **marque a opção de incluir o gabarito**; senão o campo
+  fica "Não Identificado".
+- Fórmulas, tabelas e gráficos que estão como imagem no PDF são salvos
+  na pasta `imagens/` e ligados à questão.
+
 ## 9. Limitações e problemas comuns
 
 | Situação | O que fazer |
