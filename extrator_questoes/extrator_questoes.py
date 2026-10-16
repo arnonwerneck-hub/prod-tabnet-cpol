@@ -1050,9 +1050,28 @@ def exportar(con):
 # =====================================================================
 
 def main():
+    global PASTA_PDFS
     print("=" * 65)
     print("  EXTRATOR DE QUESTÕES DE CONCURSOS")
     print("=" * 65)
+
+    # Opcional: você pode informar outra pasta de PDFs ao rodar, ex.:
+    #   python3 extrator_questoes.py "/caminho/da/minha/pasta"
+    # (o banco, as imagens e as planilhas continuam ao lado deste programa)
+    if len(sys.argv) > 1:
+        PASTA_PDFS = Path(sys.argv[1]).expanduser()
+        if not PASTA_PDFS.is_dir():
+            print(f"\n[ERRO] Pasta não encontrada:\n  {PASTA_PDFS}")
+            print("Dica: arraste a pasta para a janela do Terminal para colar o caminho certo.")
+            return
+    print(f"\nPasta dos PDFs: {PASTA_PDFS}")
+
+    # iCloud: arquivos que estão só na nuvem aparecem como ".nome.pdf.icloud"
+    # e não podem ser lidos até serem baixados para o computador.
+    na_nuvem = list(PASTA_PDFS.rglob("*.pdf.icloud")) if PASTA_PDFS.exists() else []
+    if na_nuvem:
+        print(f"\nATENÇÃO: {len(na_nuvem)} PDF(s) estão só no iCloud e serão pulados.")
+        print("No Finder, clique com o botão direito na pasta > 'Baixar Agora' e rode de novo.")
 
     # Cria a pasta de PDFs se ela ainda não existir.
     if not PASTA_PDFS.exists():
@@ -1063,8 +1082,8 @@ def main():
 
     # Lista os PDFs (inclusive dentro de subpastas). Gabaritos por último,
     # só por organização (a ordem não altera o resultado).
-    pdfs = sorted(PASTA_PDFS.rglob("*.pdf"), key=lambda p: (eh_arquivo_de_gabarito(p.name), p.name.lower()))
-    pdfs += [p for p in PASTA_PDFS.rglob("*.PDF") if p not in pdfs]
+    pdfs = sorted((p for p in PASTA_PDFS.rglob("*") if p.is_file() and p.suffix.lower() == ".pdf"),
+                  key=lambda p: (eh_arquivo_de_gabarito(p.name), p.name.lower()))
     if not pdfs:
         print(f"\nNenhum PDF encontrado em:\n  {PASTA_PDFS}")
         return

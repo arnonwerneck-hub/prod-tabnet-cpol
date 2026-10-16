@@ -93,6 +93,16 @@ Você verá algo assim:
       Gabarito encontrado no próprio PDF (60 respostas).
 ```
 
+### Usar uma pasta que já existe (ex.: iCloud), sem copiar os PDFs
+Informe o caminho da pasta depois do nome do programa, **entre aspas**:
+```
+python3 extrator_questoes.py "/Users/SEU_USUARIO/Library/Mobile Documents/com~apple~CloudDocs/QUESTÕES DE CONCURSOS"
+```
+Dica: digite `python3 extrator_questoes.py ` (com espaço no fim) e
+**arraste a pasta do Finder para a janela do Terminal**: o caminho é
+colado automaticamente. No iCloud, antes de rodar, clique com o botão
+direito na pasta > **Baixar Agora**, para que os PDFs estejam no Mac.
+
 ### Adicionar novas provas depois
 Basta colocar os novos PDFs na pasta `pdfs/` e rodar de novo o mesmo
 comando. **Só os arquivos novos são lidos**; os antigos são pulados
